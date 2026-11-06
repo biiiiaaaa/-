@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meu banco de horas</title>
+<style>
+  :root { color-scheme: light; --bg:#f7f5f1; --card:#fff; --ink:#34332f; --muted:#85827a; --accent:#71836c; --line:#e9e5dd; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px; background:var(--bg); color:var(--ink); font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif; }
+  .wrap { max-width:520px; margin:24px auto; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:22px; padding:24px; box-shadow:0 8px 30px #3b352508; }
+  .eyebrow { color:var(--muted); text-align:center; font-size:12px; font-weight:700; letter-spacing:.13em; }
+  h1 { text-align:center; font-size:22px; margin:9px 0 4px; }
+  .total { text-align:center; color:var(--accent); font-size:42px; font-weight:750; letter-spacing:-1.5px; margin:12px 0 2px; font-variant-numeric:tabular-nums; }
+  .sub { text-align:center; color:var(--muted); font-size:13px; margin-bottom:24px; }
+  .divider { border:0; border-top:1px solid var(--line); margin:20px 0; }
+  label { display:block; font-size:13px; font-weight:650; margin:0 0 7px; }
+  .fields { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  input { width:100%; border:1px solid var(--line); border-radius:12px; padding:13px 12px; font:inherit; font-size:16px; color:var(--ink); background:#fff; }
+  input:focus { outline:2px solid #71836c55; border-color:var(--accent); }
+  button { border:0; border-radius:12px; padding:13px 16px; font:inherit; font-weight:700; cursor:pointer; }
+  .add { width:100%; background:var(--accent); color:white; margin-top:14px; }
+  .add:hover { filter:brightness(.95); }
+  .history-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .history-head h2 { font-size:15px; margin:0; }
+  .count { color:var(--muted); font-size:12px; }
+  .entry { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .entry:last-child { border-bottom:0; }
+  .entry small { display:block; color:var(--muted); margin-top:3px; }
+  .entry strong { font-variant-numeric:tabular-nums; }
+  .remove { background:transparent; color:#9a625b; padding:7px 9px; font-size:12px; }
+  .empty { text-align:center; color:var(--muted); font-size:13px; padding:18px 0; }
+  .bottom { display:flex; justify-content:flex-end; margin-top:16px; }
+  .reset { background:transparent; border:1px solid var(--line); color:var(--muted); font-size:12px; padding:9px 12px; }
+  .note { color:var(--muted); font-size:11px; text-align:center; margin:15px 0 0; line-height:1.5; }
+  @media(max-width:420px) { body{padding:14px}.card{padding:19px}.total{font-size:36px} }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="card">
+    <div class="eyebrow">MEU BANCO DE HORAS</div>
+    <h1>Horas extras</h1>
+    <div class="total" id="total">0h 00min</div>
+    <div class="sub">Total de horas acumuladas</div>
+    <hr class="divider">
+    <form id="form">
+      <div class="fields">
+        <div>
+          <label for="hours">Horas</label>
+          <input id="hours" type="number" min="0" step="1" value="0" inputmode="numeric">
+        </div>
+        <div>
+          <label for="minutes">Minutos</label>
+          <input id="minutes" type="number" min="0" max="59" step="1" value="0" inputmode="numeric">
+        </div>
+      </div>
+      <button class="add" type="submit">+ Adicionar horas</button>
+    </form>
+    <hr class="divider">
+    <div class="history-head">
+      <h2>Histórico de registros</h2>
+      <span class="count" id="count">0 registros</span>
+    </div>
+    <div id="entries"><div class="empty">Nenhuma hora registrada ainda.</div></div>
+    <div class="bottom"><button class="reset" id="reset" type="button">Zerar contador</button></div>
+    <p class="note">Seus registros ficam salvos neste navegador, mesmo se você fechar a página.</p>
+  </section>
+</main>
+<script>
+(() => {
+  const KEY = 'meuBancoDeHoras_v1';
+  let entries = [];
+  try { entries = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { entries = []; }
+  const $ = id => document.getElementById(id);
+  const fmt = mins => `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2,'0')}min`;
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(entries)); } catch {} };
+  function render() {
+    const total = entries.reduce((sum, item) => sum + item.minutes, 0);
+    $('total').textContent = fmt(total);
+    $('count').textContent = `${entries.length} ${entries.length === 1 ? 'registro' : 'registros'}`;
+    const area = $('entries');
+    area.replaceChildren();
+    if (!entries.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'Nenhuma hora registrada ainda.';
+      area.append(empty);
+      return;
+    }
+    entries.forEach((item, index) => {
+      const row = document.createElement('div');
+      row.className = 'entry';
+      const info = document.createElement('div');
+      const strong = document.createElement('strong');
+      strong.textContent = fmt(item.minutes);
+      const small = document.createElement('small');
+      small.textContent = `Registro ${index + 1}`;
+      info.append(strong, small);
+      const remove = document.createElement('button');
+      remove.className = 'remove';
+      remove.type = 'button';
+      remove.textContent = 'Excluir';
+      remove.setAttribute('aria-label', `Excluir registro ${index + 1}`);
+      remove.addEventListener('click', () => { entries.splice(index, 1); save(); render(); });
+      row.append(info, remove);
+      area.append(row);
+    });
+  }
+  $('form').addEventListener('submit', event => {
+    event.preventDefault();
+    const h = Number($('hours').value);
+    const m = Number($('minutes').value);
+    if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || m < 0 || m > 59 || h + m === 0) {
+      alert('Informe horas válidas e minutos entre 0 e 59.');
+      return;
+    }
+    entries.push({ minutes: h * 60 + m });
+    save(); render();
+    $('hours').value = '0'; $('minutes').value = '0';
+    $('hours').focus();
+  });
+  $('reset').addEventListener('click', () => {
+    if (!entries.length) return;
+    if (confirm('Tem certeza de que deseja apagar todos os registros?')) {
+      entries = []; save(); render();
+    }
+  });
+  render();
+})();
+</script>
+</body>
+</html>
